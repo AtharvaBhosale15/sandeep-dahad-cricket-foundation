@@ -10,34 +10,36 @@
    ========================================== */
 :root {
   /* Colors */
-  --primary-dark: #0B132B;       /* Deep Navy */
-  --primary-navy: #1C2541;       /* Medium Navy */
-  --primary-light: #24305E;      /* Lighter Navy for cards */
-  --accent-gold: #D4AF37;        /* Metallic Gold */
-  --accent-gold-hover: #F3C63F;  /* Bright Gold for hover */
-  --text-white: #FFFFFF;
-  --text-gray: #A5B4FC;          /* Lavender Gray for secondary text */
-  --text-dark: #1E293B;          /* Dark charcoal for light mode (if needed) */
+  --primary-dark: #FFFFFF;       /* Deep Navy -> White background */
+  --primary-navy: #F8FAFC;       /* Medium Navy -> Off-white background */
+  --primary-light: #F1F5F9;      /* Lighter Navy -> Light slate card background */
+  --card-bg: rgba(255, 255, 255, 0.85); /* Semi-transparent white card */
+  --accent-gold: #B8860B;        /* Gold (darkened for light background contrast) */
+  --accent-gold-hover: #996515;
+  --text-white: #0B132B;          /* Text white -> Navy Blue */
+  --text-gray: #475569;          /* Lavender Gray -> Slate Gray */
+  --text-dark: #FFFFFF;          /* Reverse text-dark variable to white for dark overlays/badges */
   --bg-light: #F8FAFC;
-  --success: #10B981;
-  --error: #EF4444;
+  --success: #059669;
+  --error: #DC2626;
 
   /* Fonts */
   --font-heading: var(--font-outfit), 'Outfit', sans-serif;
   --font-body: var(--font-inter), 'Inter', sans-serif;
 
   /* Shadows */
-  --shadow-gold: 0 4px 20px rgba(212, 175, 55, 0.15);
-  --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.5);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-gold: 0 4px 20px rgba(184, 134, 11, 0.1);
+  --shadow-dark: 0 10px 30px rgba(11, 19, 43, 0.05);
+  --shadow-glass: 0 8px 32px 0 rgba(11, 19, 43, 0.04);
+  --shadow-card: 0 8px 30px rgba(11, 19, 43, 0.06);
 
   /* Transitions */
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: all 0.15s ease;
 
   /* Borders */
-  --border-gold: 1px solid rgba(212, 175, 55, 0.3);
-  --border-glass: 1px solid rgba(255, 255, 255, 0.08);
+  --border-gold: 1px solid rgba(184, 134, 11, 0.3);
+  --border-glass: 1px solid rgba(11, 19, 43, 0.08);
 }
 
 /* ==========================================
@@ -60,6 +62,9 @@ html {
 body {
   overflow-x: hidden;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -171,13 +176,13 @@ section {
 
 /* Glassmorphism Card Style */
 .glass-card {
-  background: rgba(28, 37, 65, 0.6);
+  background: var(--card-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: var(--border-glass);
   border-radius: 16px;
   padding: 30px;
-  box-shadow: var(--shadow-dark);
+  box-shadow: var(--shadow-card);
   transition: var(--transition-smooth);
 }
 
@@ -195,7 +200,7 @@ header {
   left: 0;
   width: 100%;
   z-index: 1000;
-  background: rgba(11, 19, 43, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: var(--border-glass);
@@ -205,7 +210,7 @@ header {
 header.scrolled {
   background: var(--primary-dark);
   padding: 10px 0;
-  box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 25px rgba(11, 19, 43, 0.05);
 }
 
 .nav-container {
@@ -297,7 +302,7 @@ header.scrolled {
   display: flex;
   align-items: center;
   padding-top: 100px;
-  background: linear-gradient(135deg, rgba(11, 19, 43, 0.9) 30%, rgba(28, 37, 65, 0.8) 100%), 
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 30%, rgba(248, 250, 252, 0.9) 100%), 
               url('/assets/hero_background.png') no-repeat center center/cover;
   position: relative;
 }
@@ -376,12 +381,13 @@ header.scrolled {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  background: rgba(28, 37, 65, 0.5);
+  background: var(--card-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: var(--border-glass);
   border-radius: 12px;
   padding: 20px;
+  box-shadow: var(--shadow-card);
 }
 
 .stat-item {
@@ -458,13 +464,13 @@ header.scrolled {
   bottom: -20px;
   left: 20px;
   right: 20px;
-  background: rgba(11, 19, 43, 0.9);
+  background: var(--primary-navy);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: var(--border-gold);
   padding: 20px;
   border-radius: 12px;
-  box-shadow: var(--shadow-dark);
+  box-shadow: var(--shadow-card);
 }
 
 .about-quote p {
@@ -543,7 +549,7 @@ header.scrolled {
 }
 
 .assoc-tag {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--primary-light);
   border: var(--border-glass);
   padding: 6px 15px;
   border-radius: 20px;
@@ -636,7 +642,7 @@ header.scrolled {
 
 .pyramid-level {
   width: 100%;
-  background: rgba(28, 37, 65, 0.6);
+  background: var(--primary-navy);
   border: var(--border-glass);
   text-align: center;
   padding: 12px;
@@ -688,7 +694,7 @@ header.scrolled {
 }
 
 .tab-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--primary-navy);
   border: var(--border-glass);
   color: var(--text-gray);
   padding: 12px 30px;
@@ -702,7 +708,7 @@ header.scrolled {
 
 .tab-btn:hover {
   color: var(--text-white);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent-gold);
 }
 
 .tab-btn.active {
@@ -833,7 +839,7 @@ header.scrolled {
   width: 45px;
   height: 45px;
   border-radius: 50%;
-  background: rgba(28, 37, 65, 0.8);
+  background: var(--primary-navy);
   border: var(--border-glass);
   color: var(--text-white);
   display: flex;
@@ -1207,7 +1213,7 @@ header.scrolled {
   align-items: center;
   gap: 15px;
   padding: 15px 20px;
-  background: rgba(28, 37, 65, 0.4);
+  background: var(--primary-navy);
   border: var(--border-glass);
   border-radius: 12px;
   transition: var(--transition-smooth);
@@ -1263,7 +1269,7 @@ header.scrolled {
   width: 45px;
   height: 45px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.05);
+  background: var(--primary-navy);
   border: var(--border-glass);
   display: flex;
   align-items: center;
@@ -1308,7 +1314,7 @@ header.scrolled {
 .form-group input,
 .form-group select,
 .form-group textarea {
-  background: rgba(11, 19, 43, 0.6);
+  background: var(--primary-navy);
   border: var(--border-glass);
   padding: 12px 18px;
   border-radius: 8px;
@@ -1323,7 +1329,7 @@ header.scrolled {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--accent-gold);
-  background: rgba(11, 19, 43, 0.9);
+  background: #FFFFFF;
 }
 
 .form-group textarea {
@@ -1372,8 +1378,8 @@ header.scrolled {
    Footer
    ========================================== */
 footer {
-  background: #050A18;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  background: var(--primary-navy);
+  border-top: var(--border-glass);
   padding: 40px 20px;
   text-align: center;
   color: var(--text-gray);

@@ -227,7 +227,7 @@ export default function AdminPage() {
       <div className="container" style={{ maxWidth: "1200px" }}>
         
         {/* Admin Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "20px", marginBottom: "35px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(15, 23, 42, 0.08)", paddingBottom: "20px", marginBottom: "35px" }}>
           <div>
             <h1 style={{ color: "var(--text-white)", fontSize: "2rem", fontFamily: "var(--font-heading)" }}>Admin Dashboard</h1>
             <p style={{ color: "var(--text-gray)", fontSize: "0.85rem" }}>Sandeep Dahad Cricket Foundation CMS</p>
@@ -243,7 +243,7 @@ export default function AdminPage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="tabs-container" style={{ justifyContent: "flex-start", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: "15px", marginBottom: "30px" }}>
+        <div className="tabs-container" style={{ justifyContent: "flex-start", borderBottom: "1px solid rgba(15, 23, 42, 0.08)", paddingBottom: "15px", marginBottom: "30px" }}>
           <button className={`tab-btn ${activeTab === "enquiries" ? "active" : ""}`} onClick={() => setActiveTab("enquiries")}>
             Enquiries ({enquiries.length})
           </button>
@@ -274,7 +274,7 @@ export default function AdminPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 {enquiries.map((enq) => (
                   <div key={enq.id} className="glass-card" style={{ borderLeft: "4px solid var(--accent-gold)", padding: "25px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "15px", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "10px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "15px", borderBottom: "1px solid rgba(15, 23, 42, 0.08)", paddingBottom: "10px" }}>
                       <div>
                         <h4 style={{ color: "var(--text-white)", fontSize: "1.1rem" }}>{enq.name} <span style={{ fontSize: "0.85rem", color: "var(--text-gray)" }}>({enq.age} yrs)</span></h4>
                         <p style={{ fontSize: "0.8rem", color: "var(--accent-gold)", textTransform: "uppercase", fontWeight: "600", marginTop: "3px" }}>{enq.service} - {enq.level} Level</p>
@@ -287,7 +287,7 @@ export default function AdminPage() {
                       <p><strong>City:</strong> {enq.city}</p>
                       <p><strong>Preferred Session:</strong> {enq.preferredTime}</p>
                     </div>
-                    <p style={{ background: "rgba(0,0,0,0.15)", padding: "12px", borderRadius: "6px", fontSize: "0.9rem", color: "var(--text-gray)", fontStyle: "italic" }}>
+                    <p style={{ background: "rgba(15, 23, 42, 0.04)", padding: "12px", borderRadius: "6px", fontSize: "0.9rem", color: "var(--text-gray)", fontStyle: "italic" }}>
                       &ldquo;{enq.message}&rdquo;
                     </p>
                   </div>
@@ -384,7 +384,7 @@ export default function AdminPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
                 {gallery.map((item, idx) => (
                   <div key={idx} className="glass-card" style={{ padding: "10px", display: "flex", flexDirection: "column", height: "100%" }}>
-                    <div style={{ height: "150px", background: "rgba(0,0,0,0.15)", borderRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+                    <div style={{ height: "150px", background: "rgba(15, 23, 42, 0.04)", borderRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
                       <span style={{ fontSize: "0.8rem", color: "var(--text-gray)", wordBreak: "break-all", padding: "10px" }}>{item.src}</span>
                     </div>
                     <div style={{ padding: "10px", flexGrow: 1 }}>
@@ -466,7 +466,7 @@ export default function AdminPage() {
                     </div>
                     <span style={{ fontSize: "0.8rem", color: "var(--accent-gold)" }}>Published: {blog.date} | By {blog.author}</span>
                     <p style={{ fontSize: "0.9rem", color: "var(--text-gray)", margin: "12px 0", fontWeight: "600" }}>{blog.excerpt}</p>
-                    <p style={{ fontSize: "0.85rem", color: "var(--text-gray)", whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.1)", padding: "12px", borderRadius: "6px" }}>{blog.content}</p>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-gray)", whiteSpace: "pre-wrap", background: "rgba(15, 23, 42, 0.04)", padding: "12px", borderRadius: "6px" }}>{blog.content}</p>
                   </div>
                 ))}
               </div>
