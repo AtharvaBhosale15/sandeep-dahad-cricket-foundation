@@ -7,13 +7,18 @@ interface Enquiry {
   id: string;
   name: string;
   age: string;
+  gender: string;
   mobile: string;
   email: string;
   city: string;
   level: string;
+  preferredDate: string;
   preferredTime: string;
   message: string;
   service: string;
+  status: string; // New, Contacted, Follow-up, Closed
+  notes: string;
+  formType: string; // booking or contact
   createdAt: string;
 }
 
@@ -63,6 +68,17 @@ export default function AdminPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Search & Filter States
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterService, setFilterService] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  // Edit notes states
+  const [editNotes, setEditNotes] = useState<{ [id: string]: string }>({});
+  const [editStatus, setEditStatus] = useState<{ [id: string]: string }>({});
+
   // Forms Input States
   const [newTestimonial, setNewTestimonial] = useState({ name: "", team: "", badge: "", quote: "" });
   const [newGallery, setNewGallery] = useState({ src: "/assets/cricket_match.jpg", alt: "", title: "", desc: "" });
@@ -99,7 +115,18 @@ export default function AdminPage() {
         const enquiriesRes = await fetch(`/api/admin/enquiries?passcode=${passcode}`);
         const enquiriesJson = await enquiriesRes.json();
         if (enquiriesJson.success) {
-          setEnquiries(enquiriesJson.enquiries || []);
+          const list: Enquiry[] = enquiriesJson.enquiries || [];
+          setEnquiries(list);
+          
+          // Initialise edit states with existing values
+          const notesMap: { [id: string]: string } = {};
+          const statusMap: { [id: string]: string } = {};
+          list.forEach(e => {
+            notesMap[e.id] = e.notes || "";
+            statusMap[e.id] = e.status || "New";
+          });
+          setEditNotes(notesMap);
+          setEditStatus(statusMap);
         }
       } catch (err) {
         console.error("Error loading admin data: ", err);
@@ -111,7 +138,7 @@ export default function AdminPage() {
     loadData();
   }, [isAuthorized, passcode]);
 
-  // Save changes to API
+  // Save content modifications (Blogs, Gallery, Testimonials)
   const saveContent = async (type: "students" | "gallery" | "blogs", updatedData: Testimonial[] | GalleryItem[] | Blog[]) => {
     try {
       const res = await fetch("/api/admin/update", {
@@ -184,37 +211,195 @@ export default function AdminPage() {
     saveContent("blogs", updated);
   };
 
+  const handleNotesChange = (id: string, text: string) => {
+    setEditNotes({ ...editNotes, [id]: text });
+  };
+
+  // Update Enquiry Details (Status / Notes)
+  const handleUpdateEnquiry = async (enquiryId: string) => {
+    try {
+      const status = editStatus[enquiryId] || "New";
+      const notes = editNotes[enquiryId] || "";
+
+      const res = await fetch("/api/admin/enquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode,
+          enquiryId,
+          status,
+          notes
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setEnquiries(json.enquiries || []);
+        alert("Enquiry updated successfully!");
+      } else {
+        alert("Failed to update enquiry: " + json.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error updating enquiry details.");
+    }
+  };
+
+  // Export filtered enquiries to CSV (opens directly in Microsoft Excel)
+  const handleExportCSV = () => {
+    if (filteredEnquiries.length === 0) {
+      alert("No records to export.");
+      return;
+    }
+
+    const headers = [
+      "ID", "Date/Time", "Form Type", "Name", "Age", "Gender", 
+      "Mobile", "Email", "City", "Playing Level", "Service Requested", 
+      "Preferred Date", "Preferred Time", "Message", "Status", "Notes"
+    ];
+
+    const rows = filteredEnquiries.map(e => [
+      e.id,
+      new Date(e.createdAt || "").toLocaleString(),
+      e.formType || "booking",
+      e.name,
+      e.age || "",
+      e.gender || "",
+      e.mobile,
+      e.email,
+      e.city,
+      e.level || "",
+      e.service,
+      e.preferredDate || "",
+      e.preferredTime || "",
+      (e.message || "").replace(/"/g, '""'),
+      e.status || "New",
+      (e.notes || "").replace(/"/g, '""')
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(val => `"${val}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `enquiries_export_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("sdcf_passcode");
     setIsAuthorized(false);
     setPasscode("");
   };
 
+  // Filter computation
+  const filteredEnquiries = enquiries.filter(enq => {
+    const matchesSearch = 
+      enq.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      enq.mobile?.includes(searchTerm) ||
+      enq.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+    const matchesService = filterService === "all" || enq.service === filterService;
+    const matchesStatus = filterStatus === "all" || (enq.status || "New") === filterStatus;
+    
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const enqDate = new Date(enq.createdAt).getTime();
+      if (startDate) {
+        const start = new Date(startDate).setHours(0,0,0,0);
+        if (enqDate < start) matchesDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate).setHours(23,59,59,999);
+        if (enqDate > end) matchesDate = false;
+      }
+    }
+    
+    return matchesSearch && matchesService && matchesStatus && matchesDate;
+  });
+
+  // Analytics helper calculations
+  const totalCount = enquiries.length;
+  const privateCount = enquiries.filter(e => e.service === "Private Coaching").length;
+  const groupCount = enquiries.filter(e => e.service === "Group Coaching").length;
+  const consultCount = enquiries.filter(e => e.service === "Cricket Consultation").length;
+  
+  const todayCount = enquiries.filter(e => {
+    const today = new Date().toDateString();
+    return new Date(e.createdAt).toDateString() === today;
+  }).length;
+
+  const thisMonthCount = enquiries.filter(e => {
+    const d = new Date();
+    const eD = new Date(e.createdAt);
+    return eD.getMonth() === d.getMonth() && eD.getFullYear() === d.getFullYear();
+  }).length;
+
+  // Monthly trends calculation for past 6 months
+  const monthlyData = () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const last6: any[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mIdx = d.getMonth();
+      const y = d.getFullYear();
+      last6.push({
+        label: `${months[mIdx]} ${y}`,
+        month: mIdx,
+        year: y,
+        total: 0,
+        private: 0,
+        group: 0,
+        consult: 0
+      });
+    }
+
+    enquiries.forEach(e => {
+      const date = new Date(e.createdAt);
+      const m = date.getMonth();
+      const y = date.getFullYear();
+      const item = last6.find(item => item.month === m && item.year === y);
+      if (item) {
+        item.total += 1;
+        if (e.service === "Private Coaching") item.private += 1;
+        else if (e.service === "Group Coaching") item.group += 1;
+        else if (e.service === "Cricket Consultation") item.consult += 1;
+      }
+    });
+
+    return last6;
+  };
+
+  const trendData = monthlyData();
+  const maxTrendTotal = Math.max(...trendData.map(t => t.total), 1);
+
   if (!isAuthorized) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "var(--primary-dark)" }}>
-        <div className="glass-card" style={{ maxWidth: "400px", width: "100%", padding: "40px", textAlign: "center" }}>
-          <h2 style={{ color: "var(--accent-gold)", marginBottom: "10px", fontFamily: "var(--font-heading)" }}>Admin Portal</h2>
+      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#F8FAFC" }}>
+        <div className="glass-card" style={{ maxWidth: "400px", width: "100%", padding: "40px", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.08)", border: "1px solid rgba(11,19,43,0.08)" }}>
+          <h2 style={{ color: "var(--text-white)", marginBottom: "10px", fontFamily: "var(--font-heading)" }}>Admin Portal</h2>
           <p style={{ color: "var(--text-gray)", fontSize: "0.85rem", marginBottom: "30px" }}>Enter passcode to manage foundation details</p>
           
           <form onSubmit={handleLogin} className="contact-form">
             <div className="form-group">
-              <label htmlFor="passcode" style={{ textAlign: "left" }}>Passcode</label>
               <input 
                 type="password" 
-                id="passcode" 
-                placeholder="Enter admin passcode" 
+                placeholder="Passcode" 
                 value={passcode} 
                 onChange={(e) => setPasscode(e.target.value)} 
-                required 
+                required
+                style={{ textAlign: "center", letterSpacing: "4px" }}
               />
             </div>
             {loginError && <p style={{ color: "var(--error)", fontSize: "0.85rem", marginTop: "5px" }}>{loginError}</p>}
-            <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "15px", justifyContent: "center" }}>
-              Verify & Enter
+            <button type="submit" className="btn btn-cta-red" style={{ width: "100%", marginTop: "15px", justifyContent: "center" }}>
+              Access Dashboard
             </button>
-            <Link href="/" style={{ color: "var(--text-gray)", fontSize: "0.85rem", display: "inline-block", marginTop: "20px" }}>
-              ← Back to Website
+            <Link href="/" style={{ color: "var(--text-gray)", fontSize: "0.85rem", display: "inline-block", marginTop: "20px", textDecoration: "underline" }}>
+              Back to Home
             </Link>
           </form>
         </div>
@@ -223,7 +408,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--primary-dark)", padding: "40px 20px" }}>
+    <div style={{ minHeight: "100vh", background: "#FFFFFF", padding: "40px 20px" }}>
       <div className="container" style={{ maxWidth: "1200px" }}>
         
         {/* Admin Header */}
@@ -233,10 +418,10 @@ export default function AdminPage() {
             <p style={{ color: "var(--text-gray)", fontSize: "0.85rem" }}>Sandeep Dahad Cricket Foundation CMS</p>
           </div>
           <div style={{ display: "flex", gap: "15px" }}>
-            <Link href="/" className="btn btn-secondary" style={{ fontSize: "0.85rem", padding: "8px 18px" }}>
+            <Link href="/" className="btn btn-secondary" style={{ fontSize: "0.85rem", padding: "8px 18px", border: "1px solid rgba(11,19,43,0.15)" }}>
               Visit Website
             </Link>
-            <button className="btn btn-primary" onClick={handleLogout} style={{ background: "var(--error)", color: "#fff", boxShadow: "none", fontSize: "0.85rem", padding: "8px 18px" }}>
+            <button className="btn" onClick={handleLogout} style={{ background: "var(--error)", color: "#fff", fontSize: "0.85rem", padding: "8px 18px" }}>
               Logout
             </button>
           </div>
@@ -265,31 +450,257 @@ export default function AdminPage() {
         {/* 1. Enquiries Log Tab */}
         {activeTab === "enquiries" && !loading && (
           <div>
-            <h3 style={{ color: "var(--text-white)", marginBottom: "20px" }}>Enquiries Log</h3>
-            {enquiries.length === 0 ? (
+            {/* Analytics Summary Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "20px", marginBottom: "35px" }}>
+              <div className="glass-card" style={{ padding: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-gray)", textTransform: "uppercase", fontWeight: "600" }}>Total Enquiries</div>
+                <div style={{ fontSize: "2rem", fontWeight: "800", color: "var(--text-white)", marginTop: "5px" }}>{totalCount}</div>
+              </div>
+              <div className="glass-card" style={{ padding: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-gray)", textTransform: "uppercase", fontWeight: "600" }}>Private Coaching</div>
+                <div style={{ fontSize: "2rem", fontWeight: "800", color: "#EF4444", marginTop: "5px" }}>{privateCount}</div>
+              </div>
+              <div className="glass-card" style={{ padding: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-gray)", textTransform: "uppercase", fontWeight: "600" }}>Group Coaching</div>
+                <div style={{ fontSize: "2rem", fontWeight: "800", color: "#3B82F6", marginTop: "5px" }}>{groupCount}</div>
+              </div>
+              <div className="glass-card" style={{ padding: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-gray)", textTransform: "uppercase", fontWeight: "600" }}>Consultation</div>
+                <div style={{ fontSize: "2rem", fontWeight: "800", color: "var(--accent-gold)", marginTop: "5px" }}>{consultCount}</div>
+              </div>
+              <div className="glass-card" style={{ padding: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-gray)", textTransform: "uppercase", fontWeight: "600" }}>Today</div>
+                <div style={{ fontSize: "2rem", fontWeight: "800", color: "#10B981", marginTop: "5px" }}>{todayCount}</div>
+              </div>
+              <div className="glass-card" style={{ padding: "18px", textAlign: "center" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-gray)", textTransform: "uppercase", fontWeight: "600" }}>This Month</div>
+                <div style={{ fontSize: "2rem", fontWeight: "800", color: "#8B5CF6", marginTop: "5px" }}>{thisMonthCount}</div>
+              </div>
+            </div>
+
+            {/* Monthly Trend CSS Bar Chart */}
+            <div className="glass-card" style={{ padding: "30px", marginBottom: "40px" }}>
+              <h3 style={{ fontSize: "1.2rem", marginBottom: "20px", color: "var(--text-white)", fontFamily: "var(--font-heading)" }}>Monthly Enquiry Trends</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", height: "200px", borderBottom: "2px solid var(--primary-light)", paddingBottom: "10px", gap: "10px" }}>
+                {trendData.map((t, idx) => (
+                  <div key={idx} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
+                    {/* Hover details */}
+                    <div style={{ display: "flex", width: "100%", justifyContent: "center", gap: "4px", height: "100%", alignItems: "flex-end" }}>
+                      {/* Bar Total */}
+                      <div 
+                        title={`Total: ${t.total}`} 
+                        style={{ width: "16px", height: `${(t.total / maxTrendTotal) * 100}%`, background: "var(--text-white)", borderRadius: "3px 3px 0 0", minHeight: t.total > 0 ? "4px" : "0" }}
+                      ></div>
+                      {/* Bar Private */}
+                      <div 
+                        title={`Private: ${t.private}`} 
+                        style={{ width: "10px", height: `${(t.private / maxTrendTotal) * 100}%`, background: "#EF4444", borderRadius: "2px 2px 0 0", minHeight: t.private > 0 ? "4px" : "0" }}
+                      ></div>
+                      {/* Bar Group */}
+                      <div 
+                        title={`Group: ${t.group}`} 
+                        style={{ width: "10px", height: `${(t.group / maxTrendTotal) * 100}%`, background: "#3B82F6", borderRadius: "2px 2px 0 0", minHeight: t.group > 0 ? "4px" : "0" }}
+                      ></div>
+                      {/* Bar Consultation */}
+                      <div 
+                        title={`Consultation: ${t.consult}`} 
+                        style={{ width: "10px", height: `${(t.consult / maxTrendTotal) * 100}%`, background: "var(--accent-gold)", borderRadius: "2px 2px 0 0", minHeight: t.consult > 0 ? "4px" : "0" }}
+                      ></div>
+                    </div>
+                    {/* Label */}
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-gray)", marginTop: "10px" }}>{t.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "20px", marginTop: "15px", flexWrap: "wrap", fontSize: "0.8rem", justifyContent: "center" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "var(--text-white)", borderRadius: "2px" }}></span> Total</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "#EF4444", borderRadius: "2px" }}></span> Private</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "#3B82F6", borderRadius: "2px" }}></span> Group</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span style={{ display: "inline-block", width: "12px", height: "12px", background: "var(--accent-gold)", borderRadius: "2px" }}></span> Consultation</span>
+              </div>
+            </div>
+
+            {/* Filter Panel */}
+            <div className="glass-card" style={{ padding: "20px", marginBottom: "30px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px", marginBottom: "15px" }}>
+                <h4 style={{ color: "var(--text-white)", fontSize: "1.1rem" }}>Filters & Tools</h4>
+                <button onClick={handleExportCSV} className="btn btn-cta-red" style={{ fontSize: "0.85rem", padding: "8px 18px" }}>
+                  Export Filtered to CSV (Excel)
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "15px" }}>
+                <div className="form-group">
+                  <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Search (Name, Mobile, Email)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Search query..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Filter by Programme</label>
+                  <select 
+                    value={filterService} 
+                    onChange={(e) => setFilterService(e.target.value)}
+                    style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                  >
+                    <option value="all">All Programmes</option>
+                    <option value="Group Coaching">Group Coaching</option>
+                    <option value="Private Coaching">Private Coaching</option>
+                    <option value="Cricket Consultation">Cricket Consultation</option>
+                    <option value="High Performance Program">High Performance Program</option>
+                    <option value="General Contact">General Contact</option>
+                    <option value="Coaching Enquiry">Coaching Enquiry</option>
+                    <option value="Consultation Enquiry">Consultation Enquiry</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Filter by Status</label>
+                  <select 
+                    value={filterStatus} 
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="New">New</option>
+                    <option value="Contacted">Contacted</option>
+                    <option value="Follow-up">Follow-up</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Date From</label>
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Date To</label>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{ padding: "8px 12px", fontSize: "0.85rem" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* List */}
+            <h3 style={{ color: "var(--text-white)", marginBottom: "20px" }}>
+              Enquiries Log ({filteredEnquiries.length} shown)
+            </h3>
+            {filteredEnquiries.length === 0 ? (
               <div className="glass-card" style={{ padding: "40px", textAlign: "center", color: "var(--text-gray)" }}>
-                No enquiries submitted yet.
+                No matching enquiries found.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                {enquiries.map((enq) => (
-                  <div key={enq.id} className="glass-card" style={{ borderLeft: "4px solid var(--accent-gold)", padding: "25px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
+                {filteredEnquiries.map((enq) => (
+                  <div key={enq.id} className="glass-card" style={{ borderLeft: `6px solid ${(enq.status === "Closed" ? "#64748B" : enq.status === "Follow-up" ? "#8B5CF6" : enq.status === "Contacted" ? "#3B82F6" : "#EF4444")}`, padding: "25px", border: "1px solid rgba(11,19,43,0.08)", boxShadow: "0 4px 15px rgba(0,0,0,0.02)" }}>
+                    {/* Card Header */}
                     <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "15px", borderBottom: "1px solid rgba(15, 23, 42, 0.08)", paddingBottom: "10px" }}>
                       <div>
-                        <h4 style={{ color: "var(--text-white)", fontSize: "1.1rem" }}>{enq.name} <span style={{ fontSize: "0.85rem", color: "var(--text-gray)" }}>({enq.age} yrs)</span></h4>
-                        <p style={{ fontSize: "0.8rem", color: "var(--accent-gold)", textTransform: "uppercase", fontWeight: "600", marginTop: "3px" }}>{enq.service} - {enq.level} Level</p>
+                        <h4 style={{ color: "var(--text-white)", fontSize: "1.2rem" }}>
+                          {enq.name}{" "}
+                          {enq.age && <span style={{ fontSize: "0.85rem", color: "var(--text-gray)" }}>({enq.age} yrs)</span>}
+                          {enq.gender && <span style={{ fontSize: "0.85rem", color: "var(--text-gray)", marginLeft: "5px" }}>[{enq.gender}]</span>}
+                        </h4>
+                        <p style={{ fontSize: "0.85rem", color: "var(--accent-gold)", textTransform: "uppercase", fontWeight: "700", marginTop: "3px" }}>
+                          {enq.service} {enq.level && `• ${enq.level} Level`}
+                        </p>
                       </div>
-                      <span style={{ fontSize: "0.8rem", color: "var(--text-gray)" }}>{new Date(enq.createdAt).toLocaleString()}</span>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-gray)", display: "block" }}>{new Date(enq.createdAt).toLocaleString()}</span>
+                        <span style={{ fontSize: "0.75rem", background: "var(--primary-light)", padding: "2px 8px", borderRadius: "4px", color: "var(--text-white)", display: "inline-block", marginTop: "5px" }}>
+                          Type: {enq.formType || "booking"}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "15px", marginBottom: "15px", fontSize: "0.9rem" }}>
-                      <p><strong>Mobile:</strong> <a href={`https://wa.me/${enq.mobile.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-gold)" }}>{enq.mobile}</a></p>
-                      <p><strong>Email:</strong> {enq.email}</p>
-                      <p><strong>City:</strong> {enq.city}</p>
-                      <p><strong>Preferred Session:</strong> {enq.preferredTime}</p>
+
+                    {/* Card Contact details & Meta */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "15px", marginBottom: "15px", fontSize: "0.9rem" }}>
+                      <div>
+                        <strong>Mobile:</strong> <a href={`https://wa.me/${enq.mobile.replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-gold)", fontWeight: "600" }}>{enq.mobile}</a>
+                      </div>
+                      <div>
+                        <strong>Email:</strong> <a href={`mailto:${enq.email}`} style={{ color: "var(--accent-gold)" }}>{enq.email}</a>
+                      </div>
+                      <div>
+                        <strong>City:</strong> {enq.city}
+                      </div>
+                      {enq.preferredDate && (
+                        <div>
+                          <strong>Preferred:</strong> {enq.preferredDate} • {enq.preferredTime}
+                        </div>
+                      )}
                     </div>
-                    <p style={{ background: "rgba(15, 23, 42, 0.04)", padding: "12px", borderRadius: "6px", fontSize: "0.9rem", color: "var(--text-gray)", fontStyle: "italic" }}>
+
+                    {/* Message Box */}
+                    <p style={{ background: "rgba(15, 23, 42, 0.04)", padding: "12px", borderRadius: "6px", fontSize: "0.9rem", color: "var(--text-gray)", fontStyle: "italic", marginBottom: "20px" }}>
                       &ldquo;{enq.message}&rdquo;
                     </p>
+
+                    {/* Interactive controls: Status & Remarks */}
+                    <div style={{ borderTop: "1px solid rgba(15, 23, 42, 0.08)", paddingTop: "15px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px", alignItems: "flex-end" }}>
+                      <div className="form-row" style={{ gap: "15px" }}>
+                        <div className="form-group">
+                          <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Update Status</label>
+                          <select 
+                            value={editStatus[enq.id] !== undefined ? editStatus[enq.id] : (enq.status || "New")}
+                            onChange={(e) => setEditStatus({ ...editStatus, [enq.id]: e.target.value })}
+                            style={{ padding: "6px 12px", fontSize: "0.85rem", height: "38px" }}
+                          >
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Follow-up">Follow-up</option>
+                            <option value="Closed">Closed</option>
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ flexGrow: 1 }}>
+                          <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-gray)" }}>Internal Remarks/Notes</label>
+                          <input 
+                            type="text" 
+                            placeholder="Add remarks..." 
+                            value={editNotes[enq.id] !== undefined ? editNotes[enq.id] : (enq.notes || "")}
+                            onChange={(e) => handleNotesChange(enq.id, e.target.value)}
+                            style={{ padding: "6px 12px", fontSize: "0.85rem", height: "38px" }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        <a 
+                          href={`https://wa.me/${enq.mobile.replace(/[^0-9]/g, "")}`}
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="btn btn-secondary" 
+                          style={{ padding: "8px 15px", fontSize: "0.8rem", border: "1px solid rgba(11,19,43,0.15)" }}
+                        >
+                          WhatsApp
+                        </a>
+                        <a 
+                          href={`mailto:${enq.email}`} 
+                          className="btn btn-secondary" 
+                          style={{ padding: "8px 15px", fontSize: "0.8rem", border: "1px solid rgba(11,19,43,0.15)" }}
+                        >
+                          Email
+                        </a>
+                        <button 
+                          onClick={() => handleUpdateEnquiry(enq.id)} 
+                          className="btn btn-cta-red" 
+                          style={{ padding: "8px 18px", fontSize: "0.8rem" }}
+                        >
+                          Save Update
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -305,7 +716,7 @@ export default function AdminPage() {
               <h3 style={{ color: "var(--text-white)", marginBottom: "20px" }}>Active Testimonials</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
                 {testimonials.map((t, idx) => (
-                  <div key={idx} className="glass-card" style={{ display: "flex", justifyContent: "space-between", gap: "20px", alignItems: "flex-start" }}>
+                  <div key={idx} className="glass-card" style={{ display: "flex", justifyContent: "space-between", gap: "20px", alignItems: "flex-start", border: "1px solid rgba(11,19,43,0.08)" }}>
                     <div>
                       <h4 style={{ color: "var(--text-white)" }}>{t.name} <span style={{ fontSize: "0.8rem", color: "var(--accent-gold)", textTransform: "uppercase" }}>({t.badge})</span></h4>
                       <p style={{ fontSize: "0.85rem", color: "var(--text-gray)", margin: "4px 0 10px" }}>{t.team}</p>
@@ -314,7 +725,7 @@ export default function AdminPage() {
                     <button 
                       className="btn" 
                       onClick={() => handleDeleteTestimonial(idx)}
-                      style={{ background: "rgba(239, 68, 68, 0.15)", color: "var(--error)", padding: "5px 12px", borderRadius: "6px", fontSize: "0.75rem" }}
+                      style={{ background: "rgba(239, 68, 68, 0.15)", color: "var(--error)", padding: "5px 12px", borderRadius: "6px", fontSize: "0.75rem", flexShrink: 0 }}
                     >
                       Delete
                     </button>
@@ -324,7 +735,7 @@ export default function AdminPage() {
             </div>
             {/* Add Form */}
             <div>
-              <div className="glass-card" style={{ position: "sticky", top: "100px" }}>
+              <div className="glass-card" style={{ position: "sticky", top: "100px", border: "1px solid rgba(11,19,43,0.08)" }}>
                 <h3 style={{ color: "var(--text-white)", marginBottom: "20px", fontFamily: "var(--font-heading)" }}>Add Testimonial</h3>
                 <form onSubmit={handleAddTestimonial} className="contact-form">
                   <div className="form-group">
@@ -334,39 +745,40 @@ export default function AdminPage() {
                       required 
                       value={newTestimonial.name} 
                       onChange={(e) => setNewTestimonial({ ...newTestimonial, name: e.target.value })} 
-                      placeholder="e.g. Virat Kohli" 
+                      placeholder="e.g. Ayush Mhatre" 
                     />
                   </div>
                   <div className="form-group">
-                    <label>IPL Team or Association</label>
+                    <label>Team/Association</label>
                     <input 
                       type="text" 
                       required 
                       value={newTestimonial.team} 
                       onChange={(e) => setNewTestimonial({ ...newTestimonial, team: e.target.value })} 
-                      placeholder="e.g. Royal Challengers Bangalore" 
+                      placeholder="e.g. Chennai Super Kings (CSK)" 
                     />
                   </div>
                   <div className="form-group">
-                    <label>Badge Category</label>
+                    <label>Badge Level</label>
                     <input 
                       type="text" 
                       required 
                       value={newTestimonial.badge} 
                       onChange={(e) => setNewTestimonial({ ...newTestimonial, badge: e.target.value })} 
-                      placeholder="e.g. IPL / State" 
+                      placeholder="e.g. IPL / Domestic" 
                     />
                   </div>
                   <div className="form-group">
-                    <label>Quote testimonial</label>
+                    <label>Quote Text</label>
                     <textarea 
                       required 
                       value={newTestimonial.quote} 
                       onChange={(e) => setNewTestimonial({ ...newTestimonial, quote: e.target.value })} 
-                      placeholder="Provide their comments..." 
+                      placeholder="Enter feedback statement..."
+                      style={{ minHeight: "100px" }}
                     />
                   </div>
-                  <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+                  <button type="submit" className="btn btn-cta-red" style={{ width: "100%", justifyContent: "center" }}>
                     Save Testimonial
                   </button>
                 </form>
@@ -383,7 +795,7 @@ export default function AdminPage() {
               <h3 style={{ color: "var(--text-white)", marginBottom: "20px" }}>Gallery Images</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
                 {gallery.map((item, idx) => (
-                  <div key={idx} className="glass-card" style={{ padding: "10px", display: "flex", flexDirection: "column", height: "100%" }}>
+                  <div key={idx} className="glass-card" style={{ padding: "10px", display: "flex", flexDirection: "column", height: "100%", border: "1px solid rgba(11,19,43,0.08)" }}>
                     <div style={{ height: "150px", background: "rgba(15, 23, 42, 0.04)", borderRadius: "8px", display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
                       <span style={{ fontSize: "0.8rem", color: "var(--text-gray)", wordBreak: "break-all", padding: "10px" }}>{item.src}</span>
                     </div>
@@ -404,7 +816,7 @@ export default function AdminPage() {
             </div>
             {/* Add Form */}
             <div>
-              <div className="glass-card" style={{ position: "sticky", top: "100px" }}>
+              <div className="glass-card" style={{ position: "sticky", top: "100px", border: "1px solid rgba(11,19,43,0.08)" }}>
                 <h3 style={{ color: "var(--text-white)", marginBottom: "20px", fontFamily: "var(--font-heading)" }}>Add Gallery Item</h3>
                 <form onSubmit={handleAddGallery} className="contact-form">
                   <div className="form-group">
@@ -424,7 +836,7 @@ export default function AdminPage() {
                       required 
                       value={newGallery.title} 
                       onChange={(e) => setNewGallery({ ...newGallery, title: e.target.value })} 
-                      placeholder="e.g. Session on Turf Nets" 
+                      placeholder="e.g. Practice match" 
                     />
                   </div>
                   <div className="form-group">
@@ -433,10 +845,11 @@ export default function AdminPage() {
                       required 
                       value={newGallery.desc} 
                       onChange={(e) => setNewGallery({ ...newGallery, desc: e.target.value })} 
-                      placeholder="Brief caption describing the image..." 
+                      placeholder="Description of the action..."
+                      style={{ minHeight: "100px" }}
                     />
                   </div>
-                  <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+                  <button type="submit" className="btn btn-cta-red" style={{ width: "100%", justifyContent: "center" }}>
                     Save Gallery Item
                   </button>
                 </form>
@@ -453,7 +866,7 @@ export default function AdminPage() {
               <h3 style={{ color: "var(--text-white)", marginBottom: "20px" }}>Foundation Blogs</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 {blogs.map((blog) => (
-                  <div key={blog.id} className="glass-card" style={{ padding: "25px" }}>
+                  <div key={blog.id} className="glass-card" style={{ padding: "25px", border: "1px solid rgba(11,19,43,0.08)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
                       <h4 style={{ color: "var(--text-white)", fontSize: "1.1rem" }}>{blog.title}</h4>
                       <button 
@@ -473,7 +886,7 @@ export default function AdminPage() {
             </div>
             {/* Add Form */}
             <div>
-              <div className="glass-card" style={{ position: "sticky", top: "100px" }}>
+              <div className="glass-card" style={{ position: "sticky", top: "100px", border: "1px solid rgba(11,19,43,0.08)" }}>
                 <h3 style={{ color: "var(--text-white)", marginBottom: "20px", fontFamily: "var(--font-heading)" }}>Create Blog Post</h3>
                 <form onSubmit={handleAddBlog} className="contact-form">
                   <div className="form-group">
@@ -506,7 +919,7 @@ export default function AdminPage() {
                       style={{ minHeight: "180px" }}
                     />
                   </div>
-                  <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+                  <button type="submit" className="btn btn-cta-red" style={{ width: "100%", justifyContent: "center" }}>
                     Publish Post
                   </button>
                 </form>

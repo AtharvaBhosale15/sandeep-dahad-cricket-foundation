@@ -1,0 +1,56 @@
+[
+  {
+    "id": "insta_1",
+    "type": "post",
+    "image": "/assets/coach_nets.jpg",
+    "caption": "Precision batting drills at the indoor nets. Working on head alignment and playing close to the body. Perfect session today! #CricketCoaching #BattingDrills #IndoorPractice",
+    "likes": 184,
+    "comments": 24,
+    "hoursAgo": 2
+  },
+  {
+    "id": "insta_2",
+    "type": "reel",
+    "image": "/assets/cricket_match.jpg",
+    "caption": "Reel: Speed and trajectory analysis during open field tournament practice. Watch how the bowlers adjust their lengths dynamically! #CricketReels #FastBowling #MatchSimulation",
+    "likes": 412,
+    "comments": 38,
+    "hoursAgo": 5
+  },
+  {
+    "id": "insta_3",
+    "type": "avatar",
+    "image": "/assets/sandeep_img.jpg",
+    "caption": "Coach Sandeep Dahad's Executive Avatar Series - Leading the Next Generation of Cricketing Talent. Level-3 BCCI NCA Certified. #Founder #HeadCoach #CricketMentorship",
+    "likes": 329,
+    "comments": 42,
+    "hoursAgo": 12
+  },
+  {
+    "id": "insta_4",
+    "type": "post",
+    "image": "/assets/cricket_match.jpg",
+    "caption": "Strategic field placements and tactical discussions during the match play workshop. Preparing our students for Ranji level thinking. #CricketStrategy #TacticalTraining #RanjiPrep",
+    "likes": 156,
+    "comments": 15,
+    "hoursAgo": 24
+  },
+  {
+    "id": "insta_5",
+    "type": "reel",
+    "image": "/assets/coach_nets.jpg",
+    "caption": "Reel: Mastering the 360-degree sweep shot execution. Watch the step-by-step breakdown of wrist positioning and weight transfer. #CricketTutorial #T20Batting #360Batting",
+    "likes": 518,
+    "comments": 53,
+    "hoursAgo": 48
+  },
+  {
+    "id": "insta_6",
+    "type": "avatar",
+    "image": "/assets/logo.png",
+    "caption": "Official Brand Avatar of Sandeep Dahad Cricket Foundation. Developing champions from playground to the international stage. #SandeepDahad #CricketAcademy #BrandIdentity",
+    "likes": 273,
+    "comments": 19,
+    "hoursAgo": 72
+  }
+]

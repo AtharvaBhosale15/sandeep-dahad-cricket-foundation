@@ -17,7 +17,7 @@ export default function Header() {
       }
 
       // Determine active section based on scroll position
-      const sections = ["home", "about", "philosophy", "achievements", "legends", "programs", "gallery", "contact"];
+      const sections = ["home", "about", "philosophy", "legends", "programs", "instagram", "students", "gallery", "contact"];
       const scrollPosition = window.scrollY + 120; // offset for sticky nav
 
       for (const section of sections) {
@@ -47,12 +47,14 @@ export default function Header() {
 
   const navLinks = [
     { id: "home", label: "Home" },
-    { id: "about", label: "Head Coach" },
+    { id: "about", label: "About Us" },
     { id: "philosophy", label: "Philosophy" },
-    { id: "achievements", label: "Achievements" },
-    { id: "programs", label: "Programs" },
+    { id: "legends", label: "Mentors" },
+    { id: "programs", label: "Programmes" },
+    { id: "instagram", label: "Coach's Avatar" },
+    { id: "students", label: "Success Stories" },
     { id: "gallery", label: "Gallery" },
-    { id: "contact", label: "Contact Us" }
+    { id: "contact", label: "Book Session" }
   ];
 
   return (
@@ -99,24 +101,9 @@ export default function Header() {
               {link.label}
             </a>
           ))}
-          {/* Mobile CTA */}
-          {mobileActive && (
-            <a 
-              href="#contact" 
-              className="btn btn-primary" 
-              onClick={closeMobileMenu}
-              style={{ marginTop: "15px", width: "100%" }}
-            >
-              Book a Session
-            </a>
-          )}
         </nav>
 
-        <div className="nav-cta">
-          <a href="#contact" className="btn btn-primary">
-            Book a Session
-          </a>
-        </div>
+        <div className="nav-cta"></div>
       </div>
     </header>
   );

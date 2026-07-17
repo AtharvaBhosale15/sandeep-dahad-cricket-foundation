@@ -214,6 +214,17 @@ export default function Home() {
     }
   ]);
 
+  // Instagram states
+  const [instaFeed, setInstaFeed] = useState<any[]>([]);
+  const [instaTab, setInstaTab] = useState<"all" | "post" | "reel" | "avatar">("all");
+
+  // Form Tab Switcher
+  const [formTab, setFormTab] = useState<"booking" | "contact">("booking");
+
+  // Form Submission Success Modal
+  const [formSuccess, setFormSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
   // Load dynamic content from API
   useEffect(() => {
     async function loadDynamicContent() {
@@ -223,6 +234,7 @@ export default function Home() {
         if (json.success) {
           if (json.students && json.students.length > 0) setStudentsList(json.students);
           if (json.gallery && json.gallery.length > 0) setGalleryList(json.gallery);
+          if (json.instagram && json.instagram.length > 0) setInstaFeed(json.instagram);
         }
       } catch (err) {
         console.error("Failed to load dynamic content:", err);
@@ -241,10 +253,12 @@ export default function Home() {
   const [formData, setFormData] = useState({
     name: "",
     age: "",
+    gender: "",
     mobile: "",
     email: "",
     city: "",
     level: "Beginner",
+    preferredDate: "",
     preferredTime: "",
     message: ""
   });
@@ -330,22 +344,41 @@ export default function Home() {
     });
   };
 
-  // Form Submit (WhatsApp click to chat + API email call)
+  // Form Submit (WhatsApp click to chat + API email call + Confirmation Modal)
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Format Message for WhatsApp
-    const waMessage = `*NEW ENQUIRY - SAANDIP DAHAAD CRICKET FOUNDATION*\n` +
-      `-----------------------------------------\n` +
-      `*Name:* ${formData.name}\n` +
-      `*Age:* ${formData.age} Years\n` +
-      `*Mobile:* ${formData.mobile}\n` +
-      `*Email:* ${formData.email}\n` +
-      `*City:* ${formData.city}\n` +
-      `*Service:* ${bookingService}\n` +
-      `*Playing Level:* ${formData.level}\n` +
-      `*Preferred Date/Time:* ${formData.preferredTime}\n` +
-      `*Message:* ${formData.message}`;
+    let waMessage = "";
+    let confMessage = "";
+
+    if (formTab === "booking") {
+      waMessage = `*NEW BOOKING ENQUIRY - SANDEEP DAHAD CRICKET FOUNDATION*\n` +
+        `-----------------------------------------\n` +
+        `*Name:* ${formData.name}\n` +
+        `*Age:* ${formData.age} Years\n` +
+        (formData.gender ? `*Gender:* ${formData.gender}\n` : "") +
+        `*Mobile:* ${formData.mobile}\n` +
+        `*Email:* ${formData.email}\n` +
+        `*City:* ${formData.city}\n` +
+        `*Service Required:* ${bookingService}\n` +
+        `*Playing Level:* ${formData.level}\n` +
+        `*Preferred Date:* ${formData.preferredDate}\n` +
+        `*Preferred Time:* ${formData.preferredTime}\n` +
+        `*Message:* ${formData.message}`;
+        
+      confMessage = "Thank you for your enquiry.\nOur team has successfully received your request.\nWe will contact you within 24 hours to discuss your coaching requirements.";
+    } else {
+      waMessage = `*NEW GENERAL ENQUIRY - SANDEEP DAHAD CRICKET FOUNDATION*\n` +
+        `-----------------------------------------\n` +
+        `*Name:* ${formData.name}\n` +
+        `*Mobile:* ${formData.mobile}\n` +
+        `*Email:* ${formData.email}\n` +
+        `*City:* ${formData.city}\n` +
+        `*Enquiry Type:* ${bookingService}\n` +
+        `*Message:* ${formData.message}`;
+        
+      confMessage = "Thank you for your enquiry.\nOur team has received your request and will contact you shortly.";
+    }
 
     const encodedMessage = encodeURIComponent(waMessage);
     const waUrl = `https://wa.me/919136357333?text=${encodedMessage}`;
@@ -355,18 +388,36 @@ export default function Home() {
       await fetch("/api/enquire", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, service: bookingService })
+        body: JSON.stringify({ 
+          ...formData, 
+          service: bookingService,
+          formType: formTab
+        })
       });
     } catch (err) {
       console.error("API submission failed: ", err);
     }
+
+    // Set success modal states
+    setSuccessMessage(confMessage);
+    setFormSuccess(true);
 
     // 3. Open WhatsApp link
     window.open(waUrl, "_blank");
   };
 
   const handleSelectProgramAndScroll = (progTitle: string) => {
+    setFormTab("booking");
     setBookingService(progTitle);
+    const contactEl = document.getElementById("contact");
+    if (contactEl) {
+      contactEl.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleSelectContactAndScroll = (enquiryType: string = "General Contact") => {
+    setFormTab("contact");
+    setBookingService(enquiryType);
     const contactEl = document.getElementById("contact");
     if (contactEl) {
       contactEl.scrollIntoView({ behavior: "smooth" });
@@ -400,9 +451,10 @@ export default function Home() {
             <p className="lead">
               Elite guidance for aspiring cricketers, coaches, and sports institutes. Receive world-class training under Sandeep Dahad, one of India&apos;s most highly accredited coaches.
             </p>
-            <div className="hero-ctas">
-              <a href="#contact" className="btn btn-primary">Book a Consultation</a>
-              <a href="#programs" className="btn btn-secondary">Explore Programs</a>
+            <div className="hero-ctas" style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "25px" }}>
+              <button onClick={() => handleSelectProgramAndScroll("Private Coaching")} className="btn btn-cta-red">Book Private Coaching</button>
+              <button onClick={() => handleSelectProgramAndScroll("Group Coaching")} className="btn btn-cta-red">Join Group Coaching</button>
+              <button onClick={() => handleSelectProgramAndScroll("Cricket Consultation")} className="btn btn-cta-red">Book Cricket Consultation</button>
             </div>
 
             <div className="hero-stats">
@@ -837,7 +889,7 @@ export default function Home() {
                   ))}
                 </ul>
                 <button 
-                  className="btn btn-secondary" 
+                  className="btn btn-cta-red" 
                   style={{ width: "100%", marginTop: "auto" }}
                   onClick={() => handleSelectProgramAndScroll(prog.title)}
                 >
@@ -845,6 +897,70 @@ export default function Home() {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Instagram Feed Section */}
+      <section id="instagram" className="reveal" style={{ background: "var(--primary-navy)" }}>
+        <div className="container">
+          <div className="section-header">
+            <h2>Instagram Feed</h2>
+            <p>Follow <a href="https://www.instagram.com/sandeepbdahad/?hl=en" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-gold)", fontWeight: "600" }}>@sandeepbdahad</a> for recent net sessions, reels, and coaching updates.</p>
+          </div>
+
+          {/* Instagram Tab Selector */}
+          <div className="tabs-container" style={{ justifyContent: "center", marginBottom: "30px" }}>
+            <button className={`tab-btn ${instaTab === "all" ? "active" : ""}`} onClick={() => setInstaTab("all")}>All Feed</button>
+            <button className={`tab-btn ${instaTab === "post" ? "active" : ""}`} onClick={() => setInstaTab("post")}>Posts</button>
+            <button className={`tab-btn ${instaTab === "reel" ? "active" : ""}`} onClick={() => setInstaTab("reel")}>Reels</button>
+            <button className={`tab-btn ${instaTab === "avatar" ? "active" : ""}`} onClick={() => setInstaTab("avatar")}>Coach's Avatar</button>
+          </div>
+
+          {/* Feed Grid */}
+          <div className="instagram-grid">
+            {instaFeed
+              .filter(item => instaTab === "all" || item.type === instaTab)
+              .map((item) => (
+                <div key={item.id} className="instagram-card" onClick={() => window.open("https://www.instagram.com/sandeepbdahad/?hl=en", "_blank")}>
+                  {/* Badge indicating type */}
+                  <div className="insta-type-badge">
+                    {item.type === "reel" && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M16 16c0 1.104-.896 2-2 2h-4c-1.104 0-2-.896-2-2v-4c0-1.104.896-2 2-2h4c1.104 0 2 .896 2 2v4zm8-10v12c0 3.309-2.691 6-6 6h-12c-3.309 0-6-2.691-6-6v-12c0-3.309 2.691-6 6-6h12c3.309 0 6 2.691 6 6zm-2 0c0-2.206-1.794-4-4-4h-12c-2.206 0-4 1.794-4 4v12c0 2.206 1.794 4 4 4h12c2.206 0 4-1.794 4-4v-12zm-6 5l-6 4v-8l6 4z"/>
+                      </svg>
+                    )}
+                    {item.type === "post" && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M22 16V4a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2zm-11-4l2.03 2.71L16 11l4 5H4l7-9z"/>
+                      </svg>
+                    )}
+                    {item.type === "avatar" && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                      </svg>
+                    )}
+                  </div>
+                  <img src={item.image} alt={item.caption} />
+                  <div className="instagram-card-overlay">
+                    <p className="instagram-card-caption">{item.caption}</p>
+                    <div className="instagram-card-stats">
+                      <span>♥ {item.likes}</span>
+                      <span>💬 {item.comments}</span>
+                    </div>
+                    <span style={{ display: "block", color: "var(--text-gray)", fontSize: "0.75rem", marginTop: "10px" }}>{item.date}</span>
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          <div className="insta-follow-row">
+            <a href="https://www.instagram.com/sandeepbdahad/?hl=en" target="_blank" rel="noopener noreferrer" className="btn insta-follow-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: "8px" }}>
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771-4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+              </svg>
+              Follow on Instagram
+            </a>
           </div>
         </div>
       </section>
@@ -930,72 +1046,177 @@ export default function Home() {
           </div>
 
           <div className="glass-card" style={{ padding: "40px" }}>
+            {/* Form Tabs */}
+            <div className="form-tab-container">
+              <button 
+                type="button" 
+                className={`form-tab-btn ${formTab === "booking" ? "active" : ""}`}
+                onClick={() => {
+                  setFormTab("booking");
+                  if (["General Contact", "Coaching Enquiry", "Consultation Enquiry"].includes(bookingService)) {
+                    setBookingService("Group Coaching");
+                  }
+                }}
+              >
+                Booking Form
+              </button>
+              <button 
+                type="button" 
+                className={`form-tab-btn ${formTab === "contact" ? "active" : ""}`}
+                onClick={() => {
+                  setFormTab("contact");
+                  setBookingService("General Contact");
+                }}
+              >
+                Contact Form
+              </button>
+            </div>
+
             <form className="contact-form" onSubmit={handleFormSubmit}>
+              {/* Row 1 */}
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="name">Full Name</label>
                   <input type="text" id="name" name="name" required placeholder="Enter full name" value={formData.name} onChange={handleInputChange} />
                 </div>
-                <div className="form-group">
-                  <label htmlFor="age">Age</label>
-                  <input type="number" id="age" name="age" required placeholder="Enter age" value={formData.age} onChange={handleInputChange} />
-                </div>
+                {formTab === "booking" ? (
+                  <div className="form-group">
+                    <label htmlFor="age">Age</label>
+                    <input type="number" id="age" name="age" required placeholder="Enter age" value={formData.age} onChange={handleInputChange} />
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label htmlFor="mobile">Mobile Number</label>
+                    <input type="tel" id="mobile" name="mobile" required placeholder="WhatsApp number" value={formData.mobile} onChange={handleInputChange} />
+                  </div>
+                )}
               </div>
 
+              {/* Row 2 */}
               <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="mobile">Mobile Number</label>
-                  <input type="tel" id="mobile" name="mobile" required placeholder="WhatsApp number" value={formData.mobile} onChange={handleInputChange} />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input type="email" id="email" name="email" required placeholder="Your email address" value={formData.email} onChange={handleInputChange} />
-                </div>
+                {formTab === "booking" ? (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="gender">Gender (Optional)</label>
+                      <select id="gender" name="gender" value={formData.gender} onChange={handleInputChange}>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="mobile">Mobile Number</label>
+                      <input type="tel" id="mobile" name="mobile" required placeholder="WhatsApp number" value={formData.mobile} onChange={handleInputChange} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="email">Email Address</label>
+                      <input type="email" id="email" name="email" required placeholder="Your email address" value={formData.email} onChange={handleInputChange} />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="city">City</label>
+                      <input type="text" id="city" name="city" required placeholder="e.g. Mumbai" value={formData.city} onChange={handleInputChange} />
+                    </div>
+                  </>
+                )}
               </div>
 
+              {/* Row 3 */}
               <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="city">City</label>
-                  <input type="text" id="city" name="city" required placeholder="e.g. Mumbai" value={formData.city} onChange={handleInputChange} />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="service">Program of Interest</label>
-                  <select id="service" name="service" value={bookingService} onChange={(e) => setBookingService(e.target.value)}>
-                    <option value="Group Coaching">Group Coaching</option>
-                    <option value="Private Coaching">Private Coaching</option>
-                    <option value="Cricket Consultation">Cricket Consultation</option>
-                    <option value="High Performance Program">High Performance Program</option>
-                  </select>
-                </div>
+                {formTab === "booking" ? (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="email">Email Address</label>
+                      <input type="email" id="email" name="email" required placeholder="Your email address" value={formData.email} onChange={handleInputChange} />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="city">City</label>
+                      <input type="text" id="city" name="city" required placeholder="e.g. Mumbai" value={formData.city} onChange={handleInputChange} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="form-group">
+                    <label htmlFor="service">Enquiry Type</label>
+                    <select id="service" name="service" value={bookingService} onChange={(e) => setBookingService(e.target.value)}>
+                      <option value="General Contact">General Contact</option>
+                      <option value="Coaching Enquiry">Coaching Enquiry</option>
+                      <option value="Consultation Enquiry">Consultation Enquiry</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="level">Playing Level</label>
-                  <select id="level" name="level" value={formData.level} onChange={handleInputChange}>
-                    <option value="Beginner">Beginner (Recreational)</option>
-                    <option value="Intermediate">Intermediate (School/Club)</option>
-                    <option value="Advanced">Advanced (First-class/District)</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="preferredTime">Preferred Date & Time</label>
-                  <input type="text" id="preferredTime" name="preferredTime" required placeholder="e.g. Saturdays 4:00 PM" value={formData.preferredTime} onChange={handleInputChange} />
-                </div>
-              </div>
+              {/* Row 4 (Booking-only fields) */}
+              {formTab === "booking" && (
+                <>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="level">Playing Level</label>
+                      <select id="level" name="level" value={formData.level} onChange={handleInputChange}>
+                        <option value="Beginner">Beginner (Recreational)</option>
+                        <option value="Intermediate">Intermediate (School/Club)</option>
+                        <option value="Advanced">Advanced (First-class/District)</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="service">Service Required</label>
+                      <select id="service" name="service" value={bookingService} onChange={(e) => setBookingService(e.target.value)}>
+                        <option value="Group Coaching">Group Coaching</option>
+                        <option value="Private Coaching">Private Coaching</option>
+                        <option value="Cricket Consultation">Cricket Consultation</option>
+                        <option value="High Performance Program">High Performance Program</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="preferredDate">Preferred Date</label>
+                      <input type="date" id="preferredDate" name="preferredDate" required value={formData.preferredDate} onChange={handleInputChange} />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="preferredTime">Preferred Time</label>
+                      <input type="text" id="preferredTime" name="preferredTime" required placeholder="e.g. Saturdays 4:00 PM" value={formData.preferredTime} onChange={handleInputChange} />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="form-group">
                 <label htmlFor="message">Message</label>
                 <textarea id="message" name="message" required placeholder="Describe your experience or requests..." value={formData.message} onChange={handleInputChange}></textarea>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+              <button type="submit" className="btn btn-cta-red" style={{ width: "100%", justifyContent: "center" }}>
                 Confirm & Submit via WhatsApp
               </button>
             </form>
           </div>
         </div>
       </section>
+
+      {/* Confirmation Success Modal */}
+      {formSuccess && (
+        <div className="modal-overlay open" onClick={() => setFormSuccess(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "450px", padding: "30px", textAlign: "center" }}>
+            <button className="modal-close-btn" onClick={() => setFormSuccess(false)}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div style={{ color: "var(--success)", fontSize: "3rem", marginBottom: "15px" }}>✓</div>
+            <h3 style={{ fontSize: "1.5rem", marginBottom: "15px", color: "var(--text-white)", fontFamily: "var(--font-heading)" }}>Enquiry Received!</h3>
+            <p style={{ fontSize: "0.95rem", color: "var(--text-gray)", lineHeight: "1.6", whiteSpace: "pre-line", marginBottom: "20px" }}>
+              {successMessage}
+            </p>
+            <button className="btn btn-cta-red" style={{ width: "100%" }} onClick={() => setFormSuccess(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
       <WhatsAppButton />

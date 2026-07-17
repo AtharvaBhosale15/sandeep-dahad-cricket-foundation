@@ -33,11 +33,45 @@ export async function GET() {
       // ignore
     }
 
+    // Read Instagram
+    let instagram = [];
+    try {
+      const instagramData = await fs.readFile(path.join(dataDir, "instagram.json"), "utf-8");
+      instagram = JSON.parse(instagramData);
+      
+      // Dynamically update timestamps relative to current call time
+      instagram = instagram.map((item: any) => {
+        const dateObj = new Date();
+        dateObj.setHours(dateObj.getHours() - item.hoursAgo);
+        
+        let relativeTime = "";
+        const diffHours = item.hoursAgo;
+        if (diffHours < 24) {
+          relativeTime = `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+        } else {
+          const days = Math.floor(diffHours / 24);
+          relativeTime = `${days} day${days > 1 ? "s" : ""} ago`;
+        }
+        
+        // Add random likes fluctuation to feel live-updating
+        const randomFluctuation = Math.floor(Math.sin(Date.now() / 100000 + item.likes) * 5);
+        
+        return {
+          ...item,
+          likes: item.likes + randomFluctuation,
+          date: relativeTime
+        };
+      });
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json({
       success: true,
       students,
       gallery,
-      blogs
+      blogs,
+      instagram
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
